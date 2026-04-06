@@ -1,10 +1,10 @@
-import { openai, OPENAI_MODEL } from "@/lib/openai";
+import { getOpenAI, OPENAI_MODEL } from "@/lib/openai";
 
 export async function generateExplanation(
   computeResult: Record<string, unknown>,
   factsData: Record<string, unknown>
 ): Promise<string> {
-  const response = await openai.chat.completions.create({
+  const response = await getOpenAI().chat.completions.create({
     model: OPENAI_MODEL,
     messages: [
       {

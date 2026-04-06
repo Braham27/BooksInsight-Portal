@@ -1,5 +1,5 @@
 import { prisma, Prisma } from "@/lib/db";
-import { openai, OPENAI_MODEL } from "@/lib/openai";
+import { getOpenAI, OPENAI_MODEL } from "@/lib/openai";
 
 // Interview steps and the facts each step needs
 const INTERVIEW_STEPS = [
@@ -160,7 +160,7 @@ export async function processMessage(caseId: string, userMessage: string) {
     });
   }
 
-  const response = await openai.chat.completions.create({
+  const response = await getOpenAI().chat.completions.create({
     model: OPENAI_MODEL,
     messages: llmMessages,
     response_format: { type: "json_object" },

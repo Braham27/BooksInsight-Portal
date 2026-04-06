@@ -1,4 +1,4 @@
-import { openai, OPENAI_VISION_MODEL } from "@/lib/openai";
+import { getOpenAI, OPENAI_VISION_MODEL } from "@/lib/openai";
 
 const W2_EXTRACTION_SCHEMA = {
   type: "object" as const,
@@ -59,7 +59,7 @@ export async function extractFromImage(
   imageBase64: string,
   mimeType: string
 ): Promise<ExtractionResult> {
-  const response = await openai.chat.completions.create({
+  const response = await getOpenAI().chat.completions.create({
     model: OPENAI_VISION_MODEL,
     messages: [
       { role: "system", content: EXTRACTION_SYSTEM_PROMPT },
