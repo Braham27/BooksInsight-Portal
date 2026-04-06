@@ -1,0 +1,180 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---- Enums ----
+
+enum CaseStatus {
+  intake
+  extracting
+  validating
+  computing
+  review
+  complete
+}
+
+enum FilingStatus {
+  SINGLE
+  MFJ
+  MFS
+  HOH
+  QSS
+}
+
+enum DocType {
+  W2
+  INT_1099  @map("1099_INT")
+  DIV_1099  @map("1099_DIV")
+  B_1099    @map("1099_B")
+  OTHER
+}
+
+enum DocStatus {
+  uploaded
+  processing
+  extracted
+  verified
+  error
+}
+
+enum MessageRole {
+  user
+  assistant
+  system
+}
+
+enum ReviewDecision {
+  approved
+  rejected
+  needs_changes
+}
+
+// ---- Models ----
+
+model Case {
+  id           String      @id @default(uuid())
+  userId       String      @map("user_id")
+  status       CaseStatus  @default(intake)
+  taxYear      Int         @default(2025) @map("tax_year")
+  filingStatus String?     @map("filing_status") @db.VarChar(10)
+  taxpayerName String?     @map("taxpayer_name") @db.VarChar(255)
+  createdAt    DateTime    @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  documents    Document[]
+  taxFacts     TaxFact[]
+  computations Computation[]
+  chatMessages ChatMessage[]
+  reviews      Review[]
+  auditLogs    AuditLog[]
+
+  @@index([userId])
+  @@map("cases")
+}
+
+model Document {
+  id            String    @id @default(uuid())
+  caseId        String    @map("case_id")
+  docType       String    @default("OTHER") @map("doc_type") @db.VarChar(20)
+  filePath      String    @map("file_path") @db.VarChar(500)
+  fileName      String    @map("file_name") @db.VarChar(255)
+  fileSize      Int       @map("file_size")
+  mimeType      String    @map("mime_type") @db.VarChar(100)
+  status        DocStatus @default(uploaded)
+  extractedData Json?     @map("extracted_data")
+  evidence      Json?
+  confidence    Float?
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
+  @@map("documents")
+}
+
+model TaxFact {
+  id        String   @id @default(uuid())
+  caseId    String   @map("case_id")
+  version   Int      @default(1)
+  factsData Json     @map("facts_data")
+  sourceMap Json?    @map("source_map")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
+  @@map("tax_facts")
+}
+
+model Computation {
+  id            String   @id @default(uuid())
+  caseId        String   @map("case_id")
+  engineName    String   @default("taxcalc") @map("engine_name") @db.VarChar(50)
+  engineVersion String?  @map("engine_version") @db.VarChar(50)
+  inputPayload  Json     @map("input_payload")
+  outputPayload Json     @map("output_payload")
+  explanation   String?
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
+  @@map("computations")
+}
+
+model ChatMessage {
+  id               String      @id @default(uuid())
+  caseId           String      @map("case_id")
+  role             MessageRole
+  content          String
+  structuredOutput Json?       @map("structured_output")
+  createdAt        DateTime    @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
+  @@map("chat_messages")
+}
+
+model Review {
+  id         String         @id @default(uuid())
+  caseId     String         @map("case_id")
+  reviewerId String         @map("reviewer_id") @db.VarChar(255)
+  decision   ReviewDecision
+  notes      String?
+  createdAt  DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
+  @@map("reviews")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  caseId     String?  @map("case_id")
+  userId     String   @map("user_id") @db.VarChar(255)
+  action     String   @db.VarChar(100)
+  entityType String   @map("entity_type") @db.VarChar(50)
+  entityId   String?  @map("entity_id") @db.VarChar(255)
+  oldValue   Json?    @map("old_value")
+  newValue   Json?    @map("new_value")
+  ipAddress  String?  @map("ip_address") @db.VarChar(45)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  case Case? @relation(fields: [caseId], references: [id], onDelete: SetNull)
+
+  @@index([caseId])
+  @@index([userId])
+  @@map("audit_logs")
+}
