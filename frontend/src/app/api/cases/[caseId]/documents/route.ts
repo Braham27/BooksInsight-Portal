@@ -3,8 +3,6 @@ import { prisma } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth";
 import { logAuditEvent } from "@/services/audit-service";
 import { toSnakeCase } from "@/lib/serialize";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
 import { randomUUID } from "crypto";
 
 const ALLOWED_MIME_TYPES = new Set([
@@ -54,13 +52,9 @@ export async function POST(
     );
   }
 
-  // Save file to uploads directory
-  const uploadsDir = path.join(process.cwd(), "uploads", caseId);
-  await mkdir(uploadsDir, { recursive: true });
-  const ext = path.extname(file.name) || "";
-  const safeFilename = `${randomUUID()}${ext}`;
-  const filePath = path.join(uploadsDir, safeFilename);
-  await writeFile(filePath, buffer);
+  // Store file content as base64 in database (Vercel has read-only filesystem)
+  const base64Content = buffer.toString("base64");
+  const safeFilename = `${randomUUID()}${file.name.substring(file.name.lastIndexOf("."))}`;
 
   const doc = await prisma.document.create({
     data: {
@@ -69,6 +63,7 @@ export async function POST(
       fileName: file.name,
       fileSize: buffer.length,
       mimeType: file.type,
+      fileContent: base64Content,
       status: "uploaded",
     },
   });

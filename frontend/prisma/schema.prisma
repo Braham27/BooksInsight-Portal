@@ -84,6 +84,7 @@ model Document {
   fileName      String    @map("file_name") @db.VarChar(255)
   fileSize      Int       @map("file_size")
   mimeType      String    @map("mime_type") @db.VarChar(100)
+  fileContent   String?   @map("file_content") @db.Text
   status        DocStatus @default(uploaded)
   extractedData Json?     @map("extracted_data")
   evidence      Json?

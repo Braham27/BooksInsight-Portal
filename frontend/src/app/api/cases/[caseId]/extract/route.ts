@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma, Prisma } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth";
 import { extractFromImage } from "@/services/document-service";
-import { readFile } from "fs/promises";
-import path from "path";
 
 // POST /api/cases/[caseId]/extract — extract data from all uploaded docs
 export async function POST(
@@ -48,10 +46,11 @@ export async function POST(
         data: { status: "processing" },
       });
 
-      // Read file from disk
-      const fullPath = path.join(process.cwd(), doc.filePath);
-      const buffer = await readFile(fullPath);
-      const base64 = buffer.toString("base64");
+      // Read file content from database (base64-encoded)
+      if (!doc.fileContent) {
+        throw new Error("File content not found in database");
+      }
+      const base64 = doc.fileContent;
 
       const extraction = await extractFromImage(base64, doc.mimeType);
 
